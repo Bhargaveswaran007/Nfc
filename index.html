@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFC Scanner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f9;
+    }
+
+    #app {
+      text-align: center;
+      width: 80%;
+      max-width: 500px;
+      padding: 20px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    #title {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    #output {
+      font-size: 16px;
+      color: #555;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    #status {
+      font-size: 18px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <h1 id="title">NFC Scanner</h1>
+  <div id="output">
+    <p id="status">Tap the screen to start scanning.</p>
+  </div>
+</div>
+<script>
+  async function startScanning() {
+    const statusElement = document.getElementById("status");
+    const outputElement = document.getElementById("output");
+
+    // Check if NFC is supported
+    if (!("NDEFReader" in window)) {
+      statusElement.textContent = "Your device does not support NFC.";
+      return;
+    }
+
+    // Start NFC scanning
+    const ndef = new NDEFReader();
+    try {
+      await ndef.scan();
+      statusElement.textContent = "Scanning for NFC tags...";
+
+      // On reading NFC data
+      ndef.onreading = (event) => {
+        const message = event.message;
+        const records = message.records;
+        let output = "";
+
+        records.forEach((record, index) => {
+          output += `
+            <p><strong>Record ${index + 1}:</strong></p>
+            <p>Type: ${record.recordType}</p>
+            <p>MIME Type: ${record.mediaType || "N/A"}</p>
+            <p>Data: ${
+              record.data ? new TextDecoder().decode(record.data) : "No data"
+            }</p>
+          `;
+        });
+
+        // Display scanned data
+        outputElement.innerHTML = `
+          <p><strong>Scanned NFC Data:</strong></p>
+          ${output}
+        `;
+      };
+    } catch (error) {
+      statusElement.textContent = `Error starting NFC reader: ${error.message}`;
+    }
+  }
+
+  // Tap to start scanning
+  document.getElementById("app").addEventListener("click", startScanning);
+</script>
+</body>
+</html>
