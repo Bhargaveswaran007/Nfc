@@ -45,62 +45,61 @@
       font-size: 18px;
       color: #666;
     }
+
+    .error {
+      color: red;
+    }
+
+    .success {
+      color: green;
+    }
   </style>
 </head>
 <body>
-<div id="app">
-  <h1 id="title">NFC Scanner</h1>
-  <div id="output">
-    <p id="status">Tap the screen to start scanning.</p>
+  <div id="app">
+    <h1 id="title">NFC Scanner</h1>
+    <div id="output">
+      <p id="status">Tap the screen to start scanning.</p>
+    </div>
+    <button id="startNFC">Start NFC Scan</button>
   </div>
-</div>
-<script>
-  async function startScanning() {
-    const statusElement = document.getElementById("status");
-    const outputElement = document.getElementById("output");
 
-    // Check if NFC is supported
+  <script>
+    const startButton = document.getElementById("startNFC");
+    const outputDiv = document.getElementById("output");
+
+    // Check if Web NFC is supported
     if (!("NDEFReader" in window)) {
-      statusElement.textContent = "Your device does not support NFC.";
-      return;
+        outputDiv.innerHTML = "<span class='error'>Web NFC is not supported in this browser.</span>";
+        startButton.disabled = true;
     }
 
-    // Start NFC scanning
-    const ndef = new NDEFReader();
-    try {
-      await ndef.scan();
-      statusElement.textContent = "Scanning for NFC tags...";
+    // Start NFC reading when the button is clicked
+    startButton.addEventListener("click", async () => {
+        try {
+            const nfc = new NDEFReader();
 
-      // On reading NFC data
-      ndef.onreading = (event) => {
-        const message = event.message;
-        const records = message.records;
-        let output = "";
+            // Start scanning
+            await nfc.scan();
+            outputDiv.innerHTML = "<span class='success'>NFC scanning started. Tap your tag.</span>";
 
-        records.forEach((record, index) => {
-          output += `
-            <p><strong>Record ${index + 1}:</strong></p>
-            <p>Type: ${record.recordType}</p>
-            <p>MIME Type: ${record.mediaType || "N/A"}</p>
-            <p>Data: ${
-              record.data ? new TextDecoder().decode(record.data) : "No data"
-            }</p>
-          `;
-        });
+            // Handle NFC tag reading
+            nfc.onreading = (event) => {
+                const serialNumber = event.serialNumber;
+                console.log("RFID Serial Number:", serialNumber);
+                outputDiv.innerHTML = `<span class='success'>Serial Number: ${serialNumber}</span>`;
+            };
 
-        // Display scanned data
-        outputElement.innerHTML = `
-          <p><strong>Scanned NFC Data:</strong></p>
-          ${output}
-        `;
-      };
-    } catch (error) {
-      statusElement.textContent = `Error starting NFC reader: ${error.message}`;
-    }
-  }
-
-  // Tap to start scanning
-  document.getElementById("app").addEventListener("click", startScanning);
-</script>
+            // Handle errors
+            nfc.onreadingerror = (error) => {
+                console.error("Error reading NFC tag:", error);
+                outputDiv.innerHTML = `<span class='error'>Error reading NFC tag: ${error.message}</span>`;
+            };
+        } catch (error) {
+            console.error("Error starting NFC scan:", error);
+            outputDiv.innerHTML = `<span class='error'>Error starting NFC scan: ${error.message}</span>`;
+        }
+    });
+  </script>
 </body>
 </html>
