@@ -3,20 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webinar Platform with Sessions</title>
+    <title>Webinar Platform</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f4f4f9;
-        }
-
-        .container {
             display: flex;
             flex-direction: column;
             height: 100vh;
-            justify-content: space-between;
         }
 
         header {
@@ -25,62 +21,66 @@
             padding: 1rem;
             text-align: center;
             font-size: 1.5rem;
+            font-weight: bold;
         }
 
-        .video-section {
+        .main {
             display: flex;
             flex-grow: 1;
-            justify-content: center;
-            align-items: center;
-            background-color: #e9ecef;
+            overflow: hidden;
         }
 
-        video {
-            width: 80%;
-            max-width: 800px;
-            height: auto;
-            background-color: black;
+        .video-container {
+            flex: 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding: 1rem;
+            justify-content: center;
+            align-items: center;
+            background: #e9ecef;
+        }
+
+        .video-container video {
+            width: 30%;
+            max-width: 300px;
             border-radius: 10px;
+            background: black;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        .controls {
-            background: #fff;
-            padding: 1rem;
+        .chat-container {
+            flex: 1;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 1px solid #ddd;
+            flex-direction: column;
+            padding: 1rem;
+            background: #fff;
+            border-left: 1px solid #ddd;
         }
 
-        .controls button {
-            background: #007bff;
-            border: none;
-            color: white;
-            padding: 0.7rem 1.5rem;
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            border: 1px solid #ddd;
             border-radius: 5px;
-            font-size: 1rem;
-            cursor: pointer;
+            background: #f8f9fa;
+            margin-bottom: 1rem;
         }
 
-        .controls button:hover {
-            background: #0056b3;
+        .chat-input {
+            display: flex;
         }
 
-        .session {
-            text-align: center;
-            margin: 1rem;
-        }
-
-        .session input {
-            width: 300px;
-            padding: 0.5rem;
+        .chat-input input {
+            flex-grow: 1;
+            padding: 0.7rem;
             border: 1px solid #ddd;
             border-radius: 5px;
             margin-right: 0.5rem;
         }
 
-        .session button {
+        .chat-input button {
             padding: 0.7rem 1.2rem;
             border: none;
             background: #007bff;
@@ -89,92 +89,145 @@
             cursor: pointer;
         }
 
-        .session button:hover {
+        .chat-input button:hover {
             background: #0056b3;
+        }
+
+        .controls {
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            background: #007bff;
+            color: white;
+        }
+
+        .controls button {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            background: white;
+            color: #007bff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .controls button:hover {
+            background: #f8f9fa;
         }
 
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            Webinar Platform with Sessions
-        </header>
-        <div class="session">
-            <input type="text" id="session-id" placeholder="Enter or generate a session ID">
-            <button id="create-session">Create Session</button>
-            <button id="join-session">Join Session</button>
+    <header>
+        Webinar Platform
+    </header>
+    <div class="main">
+        <div class="video-container" id="video-container">
+            <!-- Video streams will be added here -->
         </div>
-        <div class="video-section">
-            <video id="video-stream" autoplay muted></video>
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <!-- Chat messages will appear here -->
+            </div>
+            <div class="chat-input">
+                <input type="text" id="chat-input" placeholder="Type a message...">
+                <button id="send-button">Send</button>
+            </div>
         </div>
-        <div class="controls">
-            <button id="mic-button">Toggle Mic</button>
-            <button id="camera-button">Toggle Camera</button>
-            <button id="leave-button">Leave</button>
-        </div>
+    </div>
+    <div class="controls">
+        <button id="mic-button">Toggle Mic</button>
+        <button id="camera-button">Toggle Camera</button>
+        <button id="leave-button">Leave</button>
     </div>
 
     <script>
-        const videoStream = document.getElementById('video-stream');
+        const videoContainer = document.getElementById('video-container');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
         const micButton = document.getElementById('mic-button');
         const cameraButton = document.getElementById('camera-button');
         const leaveButton = document.getElementById('leave-button');
-        const sessionIdInput = document.getElementById('session-id');
-        const createSessionButton = document.getElementById('create-session');
-        const joinSessionButton = document.getElementById('join-session');
 
-        let localStream;
+        let localStream = null;
         let micEnabled = true;
         let cameraEnabled = true;
-        let sessionId;
+
+        const peers = {}; // To store peers and their video streams
 
         async function initMedia() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                videoStream.srcObject = localStream;
+
+                // Add local video stream
+                addVideoStream(localStream, true);
+
+                // Simulated signaling and WebRTC logic for multi-user
+                setupFakePeers();
+
             } catch (error) {
                 alert('Error accessing media devices: ' + error.message);
             }
         }
 
-        function generateSessionId() {
-            return Math.random().toString(36).substring(2, 10);
+        function addVideoStream(stream, isLocal = false) {
+            if (!stream) {
+                console.error('Stream is undefined or null');
+                return;
+            }
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.muted = isLocal;
+            videoContainer.appendChild(video);
         }
 
-        createSessionButton.addEventListener('click', () => {
-            sessionId = generateSessionId();
-            sessionIdInput.value = sessionId;
-            alert(`Session created! Share this link: ${window.location.href}?session=${sessionId}`);
-        });
+        function setupFakePeers() {
+            // Simulated logic to add 2 fake participants for the example
+            for (let i = 1; i <= 2; i++) {
+                if (localStream) {
+                    const peerStream = new MediaStream(localStream.getVideoTracks());
+                    addVideoStream(peerStream);
+                }
+            }
+        }
 
-        joinSessionButton.addEventListener('click', () => {
-            const enteredSessionId = sessionIdInput.value.trim();
-            if (enteredSessionId) {
-                sessionId = enteredSessionId;
-                alert(`Joined session: ${sessionId}`);
-            } else {
-                alert('Please enter a valid session ID.');
+        sendButton.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                const messageElement = document.createElement('div');
+                messageElement.textContent = `You: ${message}`;
+                chatMessages.appendChild(messageElement);
+                chatInput.value = '';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // Simulated response
+                const response = document.createElement('div');
+                response.textContent = `User${Math.floor(Math.random() * 10) + 1}: Thanks for sharing!`;
+                chatMessages.appendChild(response);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
 
         micButton.addEventListener('click', () => {
-            if (localStream && localStream.getAudioTracks().length > 0) {
+            if (localStream) {
                 micEnabled = !micEnabled;
                 localStream.getAudioTracks().forEach(track => track.enabled = micEnabled);
                 micButton.textContent = micEnabled ? 'Mute Mic' : 'Unmute Mic';
             } else {
-                alert('No microphone detected or enabled.');
+                alert('Microphone is not initialized.');
             }
         });
 
         cameraButton.addEventListener('click', () => {
-            if (localStream && localStream.getVideoTracks().length > 0) {
+            if (localStream) {
                 cameraEnabled = !cameraEnabled;
                 localStream.getVideoTracks().forEach(track => track.enabled = cameraEnabled);
                 cameraButton.textContent = cameraEnabled ? 'Turn Off Camera' : 'Turn On Camera';
             } else {
-                alert('No camera detected or enabled.');
+                alert('Camera is not initialized.');
             }
         });
 
@@ -186,20 +239,8 @@
             location.reload();
         });
 
-        function checkForSessionInURL() {
-            const params = new URLSearchParams(window.location.search);
-            const sessionFromURL = params.get('session');
-            if (sessionFromURL) {
-                sessionId = sessionFromURL;
-                sessionIdInput.value = sessionId;
-                alert(`Joined session from link: ${sessionId}`);
-            }
-        }
-
-        window.onload = () => {
-            checkForSessionInURL();
-            initMedia();
-        };
+        window.onload = initMedia;
     </script>
 </body>
 </html>
+
