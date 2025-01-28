@@ -1,105 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NFC Scanner</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f4f4f9;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webinar Platform with Sessions</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
 
-    #app {
-      text-align: center;
-      width: 80%;
-      max-width: 500px;
-      padding: 20px;
-      border-radius: 10px;
-      background: #fff;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            justify-content: space-between;
+        }
 
-    #title {
-      font-size: 24px;
-      margin-bottom: 20px;
-      color: #333;
-    }
+        header {
+            background: #007bff;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+        }
 
-    #output {
-      font-size: 16px;
-      color: #555;
-    }
+        .video-section {
+            display: flex;
+            flex-grow: 1;
+            justify-content: center;
+            align-items: center;
+            background-color: #e9ecef;
+        }
 
-    p {
-      margin: 10px 0;
-    }
+        video {
+            width: 80%;
+            max-width: 800px;
+            height: auto;
+            background-color: black;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
 
-    #status {
-      font-size: 18px;
-      color: #666;
-    }
+        .controls {
+            background: #fff;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #ddd;
+        }
 
-    .error {
-      color: red;
-    }
+        .controls button {
+            background: #007bff;
+            border: none;
+            color: white;
+            padding: 0.7rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
 
-    .success {
-      color: green;
-    }
-  </style>
+        .controls button:hover {
+            background: #0056b3;
+        }
+
+        .session {
+            text-align: center;
+            margin: 1rem;
+        }
+
+        .session input {
+            width: 300px;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 0.5rem;
+        }
+
+        .session button {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .session button:hover {
+            background: #0056b3;
+        }
+
+    </style>
 </head>
 <body>
-  <div id="app">
-    <h1 id="title">NFC Scanner</h1>
-    <div id="output">
-      <p id="status">Tap the button to start scanning.</p>
+    <div class="container">
+        <header>
+            Webinar Platform with Sessions
+        </header>
+        <div class="session">
+            <input type="text" id="session-id" placeholder="Enter or generate a session ID">
+            <button id="create-session">Create Session</button>
+            <button id="join-session">Join Session</button>
+        </div>
+        <div class="video-section">
+            <video id="video-stream" autoplay muted></video>
+        </div>
+        <div class="controls">
+            <button id="mic-button">Toggle Mic</button>
+            <button id="camera-button">Toggle Camera</button>
+            <button id="leave-button">Leave</button>
+        </div>
     </div>
-    <button id="startNFC">Start NFC Scan</button>
-  </div>
 
-  <script>
-    const startButton = document.getElementById("startNFC");
-    const outputDiv = document.getElementById("output");
+    <script>
+        const videoStream = document.getElementById('video-stream');
+        const micButton = document.getElementById('mic-button');
+        const cameraButton = document.getElementById('camera-button');
+        const leaveButton = document.getElementById('leave-button');
+        const sessionIdInput = document.getElementById('session-id');
+        const createSessionButton = document.getElementById('create-session');
+        const joinSessionButton = document.getElementById('join-session');
 
-    // Check if Web NFC is supported
-    if (!("NDEFReader" in window)) {
-        outputDiv.innerHTML = "<span class='error'>Web NFC is not supported in this browser.</span>";
-        startButton.disabled = true;
-    }
+        let localStream;
+        let micEnabled = true;
+        let cameraEnabled = true;
+        let sessionId;
 
-    // Start NFC reading when the button is clicked
-    startButton.addEventListener("click", async () => {
-        try {
-            const nfc = new NDEFReader();
-
-            // Start scanning
-            await nfc.scan();
-            outputDiv.innerHTML = "<span class='success'>NFC scanning started. Tap your tag.</span>";
-
-            // Handle NFC tag reading
-            nfc.onreading = (event) => {
-                const serialNumber = event.serialNumber;
-                console.log("RFID Serial Number:", serialNumber);
-                outputDiv.innerHTML = `<span class='success'>Serial Number: ${serialNumber}</span>`;
-            };
-
-            // Handle errors
-            nfc.onreadingerror = (error) => {
-                console.error("Error reading NFC tag:", error);
-                outputDiv.innerHTML = `<span class='error'>Error reading NFC tag: ${error.message}</span>`;
-            };
-        } catch (error) {
-            console.error("Error starting NFC scan:", error);
-            outputDiv.innerHTML = `<span class='error'>Error starting NFC scan: ${error.message}</span>`;
+        async function initMedia() {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                videoStream.srcObject = localStream;
+            } catch (error) {
+                alert('Error accessing media devices: ' + error.message);
+            }
         }
-    });
-  </script>
+
+        function generateSessionId() {
+            return Math.random().toString(36).substring(2, 10);
+        }
+
+        createSessionButton.addEventListener('click', () => {
+            sessionId = generateSessionId();
+            sessionIdInput.value = sessionId;
+            alert(`Session created! Share this link: ${window.location.href}?session=${sessionId}`);
+        });
+
+        joinSessionButton.addEventListener('click', () => {
+            const enteredSessionId = sessionIdInput.value.trim();
+            if (enteredSessionId) {
+                sessionId = enteredSessionId;
+                alert(`Joined session: ${sessionId}`);
+            } else {
+                alert('Please enter a valid session ID.');
+            }
+        });
+
+        micButton.addEventListener('click', () => {
+            if (localStream && localStream.getAudioTracks().length > 0) {
+                micEnabled = !micEnabled;
+                localStream.getAudioTracks().forEach(track => track.enabled = micEnabled);
+                micButton.textContent = micEnabled ? 'Mute Mic' : 'Unmute Mic';
+            } else {
+                alert('No microphone detected or enabled.');
+            }
+        });
+
+        cameraButton.addEventListener('click', () => {
+            if (localStream && localStream.getVideoTracks().length > 0) {
+                cameraEnabled = !cameraEnabled;
+                localStream.getVideoTracks().forEach(track => track.enabled = cameraEnabled);
+                cameraButton.textContent = cameraEnabled ? 'Turn Off Camera' : 'Turn On Camera';
+            } else {
+                alert('No camera detected or enabled.');
+            }
+        });
+
+        leaveButton.addEventListener('click', () => {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+            alert('You left the webinar.');
+            location.reload();
+        });
+
+        function checkForSessionInURL() {
+            const params = new URLSearchParams(window.location.search);
+            const sessionFromURL = params.get('session');
+            if (sessionFromURL) {
+                sessionId = sessionFromURL;
+                sessionIdInput.value = sessionId;
+                alert(`Joined session from link: ${sessionId}`);
+            }
+        }
+
+        window.onload = () => {
+            checkForSessionInURL();
+            initMedia();
+        };
+    </script>
 </body>
 </html>
